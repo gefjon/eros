@@ -1,0 +1,23 @@
+cargo-features = ["edition"]
+
+[package]
+name = "eros"
+version = "0.1.0"
+authors = ["Arthur Goldman <arthur@goldman-tribe.org>"]
+edition = "2018"
+
+[dependencies]
+piston = "^0.37"
+
+piston2d-graphics = "^0.26"
+piston2d-sprite = "^0.45"
+rusttype = "^0.4"
+
+piston2d-gfx_graphics = "^0.51"
+gfx_device_gl = "*"
+gfx = "^0.17"
+
+pistoncore-glutin_window = "^0.47"
+piston-viewport = "^0.3"
+
+error-chain = "0.12"
