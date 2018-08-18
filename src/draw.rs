@@ -43,7 +43,7 @@ impl Draw {
         (output_color, output_stencil)
     }
 
-    crate fn new(window: &mut Window) -> Self {
+    crate fn new(window: &mut Window) -> (Self, Factory) {
         use piston::window::OpenGLWindow;
 
         let (device, mut factory) =
@@ -55,29 +55,30 @@ impl Draw {
 
         let encoder = factory.create_command_buffer().into();
 
-        Draw {
+        (Draw {
             device,
             encoder,
             g2d,
             output_color,
             output_stencil,
-        }
+        }, factory)
     }
 
-    crate fn draw(&mut self, state: &mut dyn State, args: piston::input::RenderArgs) {
+    crate fn draw(&mut self, state: &mut dyn State, args: piston::input::RenderArgs, resources: &crate::resources::Resources) {
         let Draw {
             ref mut encoder,
             ref mut g2d,
             ref output_color,
             ref output_stencil,
             ref mut device,
+            ..
         } = self;
         g2d.draw(
             encoder,
             output_color,
             output_stencil,
             args.viewport(),
-            |c, g| state.draw(c, g, args),
+            |c, g| state.draw(c, g, args, resources),
         );
         encoder.flush(device);
     }

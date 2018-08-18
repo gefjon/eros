@@ -1,12 +1,12 @@
-pub mod error {
-    use error_chain::*;
-
-    error_chain! {}
-}
+pub extern crate graphics;
+pub extern crate gfx_graphics;
+pub extern crate rusttype;
 
 pub mod gfx_prelude {
     use gfx_graphics::{GfxGraphics, GlyphCache};
     pub use graphics::Graphics;
+
+    pub use gfx_graphics::TextureSettings;
 
     pub type Window = glutin_window::GlutinWindow;
 
@@ -22,18 +22,22 @@ pub mod gfx_prelude {
     pub type Gfx2d = gfx_graphics::Gfx2d<Resources>;
 
     pub type G2d<'a> = GfxGraphics<'a, Resources, CommandBuffer>;
-    pub type Glyphs = GlyphCache<'static, Factory, Resources>;
+    pub type Glyphs<'a> = GlyphCache<'a, Factory, Resources>;
 
     pub type DepthStencilView = gfx::handle::DepthStencilView<Resources, gfx::format::DepthStencil>;
     pub type RenderTargetView = gfx::handle::RenderTargetView<Resources, gfx::format::Srgba8>;
 }
 
+#[macro_use]
+pub mod resources;
+
+pub use self::resources::{Resource, Resources};
+
 pub mod draw;
 mod state_machine;
-pub use self::state_machine::{StateMachine, State, StateTransition};
+pub use self::state_machine::{State, StateMachine, StateTransition};
 pub use crate::gfx_prelude::{Context, G2d};
-pub use piston::{window, input, event_loop};
-pub use graphics;
+pub use piston::{event_loop, input, window};
 
 #[cfg(test)]
 mod tests {

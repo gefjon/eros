@@ -1,8 +1,10 @@
 use crate::gfx_prelude::*;
 use piston::input::*;
+use crate::resources::Resources;
 
 pub trait State {
-    fn draw(&mut self, ctx: Context, gfx: &mut G2d, args: RenderArgs);
+    fn init(&mut self) {}
+    fn draw(&mut self, ctx: Context, gfx: &mut G2d, args: RenderArgs, resources: &Resources);
     fn handle_input(&mut self, input: Input) -> StateTransition {
         match input {
             Input::Button(args) => self.handle_button_event(args),

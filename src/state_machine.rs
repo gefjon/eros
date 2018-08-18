@@ -4,11 +4,13 @@ pub use self::state_trait::{State, StateTransition};
 use crate::draw::Draw;
 use piston::input::*;
 use std::convert::AsMut;
+use crate::resources::Resources;
 
 pub struct StateMachine {
     window: Window,
     draw: Draw,
     stack: Vec<Box<dyn State>>,
+    resources: Resources,
 }
 
 impl StateMachine {
@@ -48,6 +50,7 @@ impl StateMachine {
         use piston::window::WindowSettings;
 
         WindowSettings::new(title, dims)
+            .exit_on_esc(true)
             .opengl(crate::draw::GL_V)
             .samples(crate::draw::SAMPLES)
             .build()
@@ -56,11 +59,14 @@ impl StateMachine {
     pub fn new(title: &str, dims: (u32, u32)) -> Self {
         let mut window = Self::make_window(title, dims);
 
-        let draw = Draw::new(&mut window);
+        let (draw, factory) = Draw::new(&mut window);
+
+        let resources = Resources::new(factory);
 
         StateMachine {
             window,
             draw,
+            resources,
             stack: Vec::new(),
         }
     }
@@ -68,9 +74,10 @@ impl StateMachine {
         let StateMachine {
             ref mut draw,
             ref mut stack,
+            ref resources,
             ..
         } = self;
-        draw.draw(stack.last_mut().unwrap().as_mut(), args);
+        draw.draw(stack.last_mut().unwrap().as_mut(), args, resources);
     }
 
     fn is_stack_empty(&self) -> bool {
@@ -81,11 +88,13 @@ impl StateMachine {
         match trans {
             StateTransition::Quit => true,
             StateTransition::Continue => false,
-            StateTransition::Replace(new) => {
+            StateTransition::Replace(mut new) => {
+                new.init();
                 *self.current_state_mut() = new;
                 true
             }
-            StateTransition::Push(new) => {
+            StateTransition::Push(mut new) => {
+                new.init();
                 self.push(new);
                 true
             }
