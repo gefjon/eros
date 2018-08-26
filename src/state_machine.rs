@@ -1,3 +1,4 @@
+use log::*;
 use crate::gfx_prelude::Window;
 mod state_trait;
 pub use self::state_trait::{State, StateTransition};
@@ -30,22 +31,26 @@ impl StateMachine {
                 Event::Loop(Loop::Render(args)) => self.draw(args),
                 Event::Loop(Loop::Update(args)) => {
                     if self.update_and_should_quit(args) {
+                        info!("quitting after update");
                         return;
                     }
                 }
                 Event::Loop(Loop::Idle(args)) => {
                     if self.idle_and_should_quit(args) {
+                        info!("quitting after idling");
                         return;
                     }
                 }
                 Event::Input(input) => {
                     if self.handle_input_and_should_quit(input) {
+                        info!("quitting after handling input");
                         return;
                     }
                 }
                 _ => (),
             }
         }
+        info!("events.next returned None");
     }
     fn make_window(title: &str, dims: (u32, u32)) -> Window {
         use piston::window::WindowSettings;
@@ -87,19 +92,30 @@ impl StateMachine {
 
     fn handle_state_transition_and_should_quit(&mut self, trans: StateTransition) -> bool {
         match trans {
-            StateTransition::Quit => true,
+            StateTransition::Quit => {
+                info!("quitting from state {:p}", self.current_state());
+                true
+            }
             StateTransition::Continue => false,
             StateTransition::Replace(mut new) => {
+                info!("replacing the state {:p} with {:p}", self.current_state(), &new);
                 new.init(&self.resources);
                 *self.current_state_mut() = new;
-                true
+                false
             }
             StateTransition::Push(mut new) => {
+                info!("pushing the state {:p}", &new);
                 new.init(&self.resources);
                 self.push(new);
-                true
+                false
             }
             StateTransition::Return => {
+                if self.stack.len() > 1 {
+                    info!("returning from state {:p} to {:p}", self.current_state(), &self.stack[self.stack.len() - 2]);
+                } else {
+                    info!("returning from state {:p}; exiting", self.current_state());
+                }
+                
                 self.pop();
                 self.is_stack_empty()
             }
@@ -110,6 +126,11 @@ impl StateMachine {
     fn current_state_mut(&mut self) -> &mut Box<dyn State> {
         let idx = self.stack.len() - 1;
         &mut self.stack[idx]
+    }
+    #[cfg_attr(feature = "cargo-clippy", allow(borrowed_box))]
+    fn current_state(&self) -> &Box<dyn State> {
+        let idx = self.stack.len() - 1;
+        &self.stack[idx]
     }
     fn push(&mut self, state: Box<dyn State>) {
         self.stack.push(state);
