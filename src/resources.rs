@@ -1,13 +1,21 @@
 use crate::gfx_prelude::{Factory, Glyphs};
 use std::{
-    cell::RefCell,
-    collections::{HashMap},
+    cell::{RefCell},
+    collections::HashMap,
     path::{Path, PathBuf},
     rc::{Rc, Weak},
 };
 
+#[derive(Clone)]
 pub enum Resource {
-    Font(Glyphs<'static>),
+    Font(Rc<RefCell<Glyphs<'static>>>),
+    _DummyResource,
+}
+
+#[derive(Clone)]
+pub enum WeakResource {
+    Font(Weak<RefCell<Glyphs<'static>>>),
+    _DummyResource,
 }
 
 impl Resource {
@@ -17,19 +25,40 @@ impl Resource {
             .map(std::ffi::OsStr::to_str)
             .map(Option::unwrap)
         {
-            Some("ttf") | Some("otf") => Ok(Resource::Font(Glyphs::new(
-                name,
-                factory,
-                gfx_graphics::TextureSettings::new(),
-            )?)),
+            Some("ttf") | Some("otf") => {
+                let f = Glyphs::new(name, factory, gfx_graphics::TextureSettings::new())?;
+                Ok(Resource::Font(Rc::new(RefCell::new(f))))
+            }
             _ => unimplemented!(),
+        }
+    }
+    pub fn downgrade(res: &Resource) -> WeakResource {
+        match res {
+            Resource::Font(ref rc) => WeakResource::Font(Rc::downgrade(rc)),
+            Resource::_DummyResource => WeakResource::_DummyResource,
+        }
+    }
+    pub fn try_as_glyphs(&self) -> Option<Rc<RefCell<Glyphs<'static>>>> {
+        if let Resource::Font(ref rc) = self {
+            Some(rc.clone())
+        } else {
+            None
+        }
+    }
+}
+
+impl WeakResource {
+    pub fn upgrade(&self) -> Option<Resource> {
+        match self {
+            WeakResource::Font(ref weak) => Some(Resource::Font(weak.upgrade()?)),
+            WeakResource::_DummyResource => Some(Resource::_DummyResource),
         }
     }
 }
 
 pub struct Resources {
-    res: RefCell<HashMap<PathBuf, Weak<Resource>>>,
-    preloads: RefCell<HashMap<PathBuf, Rc<Resource>>>,
+    res: RefCell<HashMap<PathBuf, WeakResource>>,
+    preloads: RefCell<HashMap<PathBuf, Resource>>,
     factory: Factory,
 }
 
@@ -66,37 +95,54 @@ impl Resources {
             factory,
         }
     }
-    pub fn try_get(&self, resource_name: &Path) -> Option<Rc<Resource>> {
-        if let Some(rc) = self.preloads.borrow_mut().remove(resource_name) {
-            Some(rc)
+    pub fn try_get(&self, resource_name: &Path) -> Option<Resource> {
+        if let Some(res) = self.preloads.borrow_mut().remove(resource_name) {
+            Some(res)
         } else {
             self.res.borrow().get(resource_name)?.upgrade()
         }
     }
-    pub fn get(&self, resource_name: &Path) -> Rc<Resource> {
-        if let Some(rc) = self.preloads.borrow_mut().remove(resource_name) {
-            rc
-        } else if let Some(Some(rc)) = self.res.borrow().get(resource_name).map(Weak::upgrade) {
-            rc
-        } else {
-            let rc = Rc::new(Resource::load(resource_name, self.factory.clone()).unwrap());
-            self.res
-                .borrow_mut()
-                .insert(resource_name.to_owned(), Rc::downgrade(&rc));
-            rc
+    pub fn get(&self, resource_name: &Path) -> Resource {
+        if let Some(res) = self.preloads.borrow_mut().remove(resource_name) {
+            return res;
         }
+        
+        {
+            if let Some(Some(res)) = self.res
+                .borrow()
+                .get(resource_name)
+                .map(WeakResource::upgrade)
+            {
+                return res;
+            }
+        }
+
+        if let Some(Some(res)) = self
+            .res
+            .borrow()
+            .get(resource_name)
+            .map(WeakResource::upgrade)
+        {
+            return res;
+        }
+        
+        let loaded = Resource::load(resource_name, self.factory.clone()).unwrap();
+        self.res
+            .borrow_mut()
+            .insert(resource_name.to_owned(), Resource::downgrade(&loaded));
+        loaded
     }
     pub fn preload(&self, resource_name: &Path) {
         if self.preloads.borrow().contains_key(resource_name) {
             ()
         } else {
-            let rc = Rc::new(Resource::load(resource_name, self.factory.clone()).unwrap());
+            let loaded = Resource::load(resource_name, self.factory.clone()).unwrap();
             self.res
                 .borrow_mut()
-                .insert(resource_name.to_owned(), Rc::downgrade(&rc));
+                .insert(resource_name.to_owned(), Resource::downgrade(&loaded));
             self.preloads
                 .borrow_mut()
-                .insert(resource_name.to_owned(), rc);
+                .insert(resource_name.to_owned(), loaded);
         }
     }
 }

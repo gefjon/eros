@@ -3,7 +3,7 @@ use piston::input::*;
 use crate::resources::Resources;
 
 pub trait State {
-    fn init(&mut self) {}
+    fn init(&mut self, _resources: &Resources) {}
     fn draw(&mut self, ctx: Context, gfx: &mut G2d, args: RenderArgs, resources: &Resources);
     fn handle_input(&mut self, input: Input) -> StateTransition {
         match input {
@@ -14,7 +14,7 @@ pub trait State {
     fn update(&mut self, _update_args: UpdateArgs) -> StateTransition {
         StateTransition::Continue
     }
-    fn idle(&mut self, _idle_args: IdleArgs) -> StateTransition {
+    fn idle(&mut self, _idle_args: IdleArgs, _resources: &Resources) -> StateTransition {
         StateTransition::Continue
     }
     fn handle_button_event(&mut self, args: ButtonArgs) -> StateTransition {

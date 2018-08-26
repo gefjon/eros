@@ -89,12 +89,12 @@ impl StateMachine {
             StateTransition::Quit => true,
             StateTransition::Continue => false,
             StateTransition::Replace(mut new) => {
-                new.init();
+                new.init(&self.resources);
                 *self.current_state_mut() = new;
                 true
             }
             StateTransition::Push(mut new) => {
-                new.init();
+                new.init(&self.resources);
                 self.push(new);
                 true
             }
@@ -121,7 +121,7 @@ impl StateMachine {
         self.handle_state_transition_and_should_quit(trans)
     }
     fn idle_and_should_quit(&mut self, args: IdleArgs) -> bool {
-        let trans = self.current_state_mut().idle(args);
+        let trans = self.stack.last_mut().unwrap().idle(args, &self.resources);
         self.handle_state_transition_and_should_quit(trans)
     }
     fn handle_input_and_should_quit(&mut self, input: Input) -> bool {
