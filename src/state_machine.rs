@@ -2,7 +2,7 @@ use crate::gfx_prelude::Window;
 mod state_trait;
 pub use self::state_trait::{State, StateTransition};
 use crate::draw::Draw;
-use crate::resources::Resources;
+use crate::resources::{Resources, ResourcesBuilder};
 use piston::input::*;
 use std::convert::AsMut;
 
@@ -19,7 +19,8 @@ impl StateMachine {
 
         Events::new(EventSettings::new())
     }
-    pub fn run(&mut self, initial_state: Box<dyn State>) {
+    pub fn run(&mut self, mut initial_state: Box<dyn State>) {
+        initial_state.init(&self.resources);
         self.push(initial_state);
 
         let events = &mut Self::make_events();
@@ -61,7 +62,7 @@ impl StateMachine {
 
         let (draw, factory) = Draw::new(&mut window);
 
-        let resources = Resources::new(factory);
+        let resources = ResourcesBuilder::new(factory).build();
 
         StateMachine {
             window,

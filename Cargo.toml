@@ -21,3 +21,5 @@ pistoncore-glutin_window = "^0.47"
 piston-viewport = "^0.3"
 
 error-chain = "0.12"
+
+log = "^0.4"

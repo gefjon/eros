@@ -1,4 +1,5 @@
 use crate::gfx_prelude::{Factory, Glyphs};
+use log::*;
 use std::{
     cell::RefCell,
     collections::HashMap,
@@ -59,52 +60,95 @@ impl WeakResource {
 pub struct Resources {
     res: RefCell<HashMap<PathBuf, WeakResource>>,
     preloads: RefCell<HashMap<PathBuf, Resource>>,
+    keep: RefCell<HashMap<PathBuf, Resource>>,
     factory: Factory,
 }
 
-impl Resources {
+pub struct ResourcesBuilder {
+    preload_cap: Option<usize>,
+    res_cap: Option<usize>,
+    keep_cap: Option<usize>,
+    factory: Factory,
+}
+
+impl ResourcesBuilder {
     pub fn new(factory: Factory) -> Self {
         Self {
+            preload_cap: None,
+            res_cap: None,
+            keep_cap: None,
+            factory,
+        }
+    }
+    pub fn build(self) -> Resources {
+        let r = Resources::new(self.factory);
+        if let Some(preload_cap) = self.preload_cap {
+            r.preloads.borrow_mut().reserve(preload_cap);
+        }
+        if let Some(res_cap) = self.res_cap {
+            r.res.borrow_mut().reserve(res_cap);
+        }
+        if let Some(keep_cap) = self.keep_cap {
+            r.keep.borrow_mut().reserve(keep_cap);
+        }
+        r
+    }
+}
+
+impl Resources {
+    fn new(factory: Factory) -> Self {
+        Self {
             res: RefCell::new(HashMap::new()),
             preloads: RefCell::new(HashMap::new()),
-            factory,
-        }
-    }
-    pub fn from_capacity(cap: usize, factory: Factory) -> Self {
-        Self {
-            res: RefCell::new(HashMap::with_capacity(cap)),
-            preloads: RefCell::new(HashMap::new()),
-            factory,
-        }
-    }
-    pub fn from_preload_capacity(preload_cap: usize, factory: Factory) -> Self {
-        Self {
-            res: RefCell::new(HashMap::new()),
-            preloads: RefCell::new(HashMap::with_capacity(preload_cap)),
-            factory,
-        }
-    }
-    pub fn from_capcity_and_preload_capacity(
-        cap: usize,
-        preload_cap: usize,
-        factory: Factory,
-    ) -> Self {
-        Self {
-            res: RefCell::new(HashMap::with_capacity(cap)),
-            preloads: RefCell::new(HashMap::with_capacity(preload_cap)),
+            keep: RefCell::new(HashMap::new()),
             factory,
         }
     }
     pub fn try_get(&self, resource_name: &Path) -> Option<Resource> {
         if let Some(res) = self.preloads.borrow_mut().remove(resource_name) {
             Some(res)
+        } else if let Some(res) = self.keep.borrow().get(resource_name) {
+            Some(res.clone())
         } else {
             self.res.borrow().get(resource_name)?.upgrade()
         }
     }
+    pub fn keep(&self, resource_name: &Path) {
+        if self.keep.borrow().contains_key(resource_name) {
+            info!("{:#?} is already in `keep`", resource_name);
+            return;
+        }
+
+        if let Some(res) = self.preloads.borrow_mut().remove(resource_name) {
+            info!("{:#?} is in `preloads`", resource_name);
+            self.keep.borrow_mut().insert(resource_name.to_owned(), res);
+        } else if let Some(Some(res)) = self
+            .res
+            .borrow_mut()
+            .remove(resource_name)
+            .as_ref()
+            .map(WeakResource::upgrade)
+        {
+            info!("{:#?} is in `res`", resource_name);
+            self.keep.borrow_mut().insert(resource_name.to_owned(), res);
+        } else {
+            info!("About to load & keep {:#?}", resource_name);
+            self.keep.borrow_mut().insert(
+                resource_name.to_owned(),
+                Resource::load(resource_name, self.factory.clone()).unwrap(),
+            );
+            info!("Finished loading & keeping {:#?}", resource_name);
+        }
+    }
     pub fn get(&self, resource_name: &Path) -> Resource {
         if let Some(res) = self.preloads.borrow_mut().remove(resource_name) {
+            info!("{:#?} is preloaded", resource_name);
             return res;
+        }
+
+        if let Some(res) = self.keep.borrow().get(resource_name) {
+            info!("{:#?} is kept", resource_name);
+            return res.clone();
         }
 
         {
@@ -114,6 +158,7 @@ impl Resources {
                 .get(resource_name)
                 .map(WeakResource::upgrade)
             {
+                info!("{:#?} is cached", resource_name);
                 return res;
             }
         }
@@ -124,6 +169,7 @@ impl Resources {
             .get(resource_name)
             .map(WeakResource::upgrade)
         {
+            info!("{:#?} is not cached, loading it", resource_name);
             return res;
         }
 
@@ -131,12 +177,15 @@ impl Resources {
         self.res
             .borrow_mut()
             .insert(resource_name.to_owned(), Resource::downgrade(&loaded));
+        info!("Finished loading {:#?}", resource_name);
         loaded
     }
     pub fn preload(&self, resource_name: &Path) {
         if self.preloads.borrow().contains_key(resource_name) {
+            info!("{:#?} is already preloaded", resource_name);
             ()
         } else {
+            info!("about to preload {:#?}", resource_name);
             let loaded = Resource::load(resource_name, self.factory.clone()).unwrap();
             self.res
                 .borrow_mut()
@@ -144,6 +193,7 @@ impl Resources {
             self.preloads
                 .borrow_mut()
                 .insert(resource_name.to_owned(), loaded);
+            info!("finished preloading {:#?}", resource_name);
         }
     }
 }

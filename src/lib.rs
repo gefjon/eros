@@ -3,7 +3,9 @@ pub extern crate graphics;
 pub extern crate rusttype;
 
 pub mod gfx_prelude {
+    use gfx_device_gl::Resources;
     use gfx_graphics::{GfxGraphics, GlyphCache};
+
     pub use graphics::Graphics;
 
     pub use gfx_graphics::TextureSettings;
@@ -12,7 +14,6 @@ pub mod gfx_prelude {
 
     pub type Device = gfx_device_gl::Device;
 
-    pub type Resources = gfx_device_gl::Resources;
     pub type Factory = gfx_device_gl::Factory;
     pub type CommandBuffer = gfx_device_gl::CommandBuffer;
     pub type Context = graphics::Context;
