@@ -55,16 +55,24 @@ impl Draw {
 
         let encoder = factory.create_command_buffer().into();
 
-        (Draw {
-            device,
-            encoder,
-            g2d,
-            output_color,
-            output_stencil,
-        }, factory)
+        (
+            Draw {
+                device,
+                encoder,
+                g2d,
+                output_color,
+                output_stencil,
+            },
+            factory,
+        )
     }
 
-    crate fn draw(&mut self, state: &mut dyn State, args: piston::input::RenderArgs, resources: &crate::resources::Resources) {
+    crate fn draw(
+        &mut self,
+        state: &mut dyn State,
+        args: piston::input::RenderArgs,
+        resources: &crate::resources::Resources,
+    ) {
         let Draw {
             ref mut encoder,
             ref mut g2d,

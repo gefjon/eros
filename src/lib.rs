@@ -1,5 +1,5 @@
-pub extern crate graphics;
 pub extern crate gfx_graphics;
+pub extern crate graphics;
 pub extern crate rusttype;
 
 pub mod gfx_prelude {

@@ -1,6 +1,6 @@
 use crate::gfx_prelude::{Factory, Glyphs};
 use std::{
-    cell::{RefCell},
+    cell::RefCell,
     collections::HashMap,
     path::{Path, PathBuf},
     rc::{Rc, Weak},
@@ -106,9 +106,10 @@ impl Resources {
         if let Some(res) = self.preloads.borrow_mut().remove(resource_name) {
             return res;
         }
-        
+
         {
-            if let Some(Some(res)) = self.res
+            if let Some(Some(res)) = self
+                .res
                 .borrow()
                 .get(resource_name)
                 .map(WeakResource::upgrade)
@@ -125,7 +126,7 @@ impl Resources {
         {
             return res;
         }
-        
+
         let loaded = Resource::load(resource_name, self.factory.clone()).unwrap();
         self.res
             .borrow_mut()

@@ -2,9 +2,9 @@ use crate::gfx_prelude::Window;
 mod state_trait;
 pub use self::state_trait::{State, StateTransition};
 use crate::draw::Draw;
+use crate::resources::Resources;
 use piston::input::*;
 use std::convert::AsMut;
-use crate::resources::Resources;
 
 pub struct StateMachine {
     window: Window,

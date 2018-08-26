@@ -1,6 +1,6 @@
 use crate::gfx_prelude::*;
-use piston::input::*;
 use crate::resources::Resources;
+use piston::input::*;
 
 pub trait State {
     fn init(&mut self, _resources: &Resources) {}
